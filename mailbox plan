@@ -1,0 +1,62 @@
+local HttpService = game:GetService("HttpService")
+local Players = gService("Players") or game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+
+-- เปลี่ยน URL ข้างล่างนี้ เป็น URL จริงที่คุณได้หลังจากเอา Node.js ไปรันบน Cloud (เช่น https://your-app.onrender.com/latest)
+local SERVER_URL = "https://index-js-puuz.onrender.com/latest"
+
+local lastTimestamp = 0
+
+-- สร้าง ScreenGui เล็กๆ ไว้โชว์บนจอ (ถ้ายังไม่มี UI ของตัวเอง)
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "TikTokLiveUI"
+ScreenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 250, 0, 80)
+Frame.Position = UDim2.new(0.02, 0, 0.1, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Frame.BackgroundTransparency = 0.5
+Frame.Parent = ScreenGui
+
+local ImageLabel = Instance.new("ImageLabel")
+ImageLabel.Size = UDim2.new(0, 60, 0, 60)
+ImageLabel.Position = UDim2.new(0.05, 0, 0.15, 0)
+ImageLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+ImageLabel.Parent = Frame
+
+local TextLabel = Instance.new("TextLabel")
+TextLabel.Size = UDim2.new(0.65, 0, 0.8, 0)
+TextLabel.Position = UDim2.new(0.3, 0, 0.1, 0)
+TextLabel.BackgroundTransparency = 1
+TextLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextLabel.TextScaled = true
+TextLabel.Text = "รอข้อความจาก TikTok..."
+TextLabel.Parent = Frame
+
+-- ฟังก์ชันดึงข้อมูลจาก Server
+task.spawn(function()
+	while task.wait(1.5) do
+		local success, response = pcall(function()
+			return game:HttpGet(SERVER_URL)
+		end)
+
+		if success and response then
+			local data = HttpService:JSONDecode(response)
+			
+			if data and data.timestamp and data.timestamp > lastTimestamp then
+				lastTimestamp = data.timestamp
+				
+				TextLabel.Text = data.username .. ": " .. data.comment
+				
+				-- พยายามดึง UserID หรือรูปโปรไฟล์จากชื่อใน Roblox (ถ้าชื่อตรงกับใน Roblox)
+				pcall(function()
+					local userId = Players:GetUserIdFromNameAsync(data.username)
+					if userId then
+						ImageLabel.Image = Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailType.Size420x420)
+					end
+				end)
+			end
+		end
+	end
+end)
